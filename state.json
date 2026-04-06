@@ -1,0 +1,10 @@
+{
+  "quizzes": [
+    {
+      "question": "~~의 정답은??",
+      "choices": ["답1", "답2", "답3", "답4"],
+      "answer": 1
+    }
+  ],
+  "best_score": 3
+}
