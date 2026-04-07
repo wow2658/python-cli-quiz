@@ -10,11 +10,11 @@
 
 ## 2. 개발 및 실행 환경
 - **Language:** Python 3.12.13 (외부 라이브러리 미사용, 표준 라이브러리만 활용)
-- **OS:** macOS (Zsh 환경)
+- **OS:** macOS (Zsh 환경) & Windows 11
 - **IDE:** Visual Studio Code 1.112.0
-- **Virtualization:** Docker (Host OS의 도커 실행기-Docker Desktop, OrbStack 등-와 무관하게 100% 동일한 Linux 및 Python 3.12.13 실행 환경 보장)
-- **VCS:** Git CLI (v2.53.0) & GitHub
-- **특이사항:** 본 프로젝트는 실제 2인 팀 개발이 아닌, 'Windows & Mac 환경에서의 실무 협업 시나리오'를 가정하여 인프라 설계 및 형상 관리를 학습한 결과물임. OS 차이로 인한 의존성 및 경로 충돌을 방지하고자 `Dockerfile`과 `docker-compose.yml`을 구성하여 컨테이너화된 환경을 선제 구축함. 또한, Git의 구동 원리를 체화하기 위해 GUI 툴에 의존하지 않고 모든 작업을 순수 터미널 명령어(CLI)로 수행함.
+- **Virtualization:** Docker (Windows/Mac 이기종 간 100% 동일한 Linux 실행 환경 보장)
+- **VCS:** Git CLI (Mac) & TortoiseGit (Windows) & GitHub
+- **특이사항:** 본 프로젝트는 'Windows + GUI vs Mac + CLI 환경에서의 실무 협업 시나리오'를 가정하여 인프라를 설계함. Mac 환경(개발자 B)은 Git의 원리 체화를 위해 순수 터미널 명령어(CLI)를 활용하고, Windows 환경(개발자 A)은 실무 생산성을 위해 GUI 툴(TortoiseGit)을 활용하는 하이브리드 워크플로우를 성공적으로 검증함.
 
 ---
 
@@ -99,11 +99,15 @@ docker compose run --rm quiz-app
 - **`dev` (Development):** 개발된 기능이 모이는 통합 테스트 브랜치.
 - **`feature/...` (Feature):** 개별 기능 개발을 위한 격리 브랜치. 완료 시 `dev`로 PR 병합.
 
-### 7.2. 2인 협업 시나리오 명령어 흐름
-**1. [공통] 통합 브랜치 세팅:** `main`에 Docker 환경 구축 완료 후 `dev` 브랜치 파생 및 원격 업로드 (`git checkout -b dev`)
-**2. [개발자 A - Windows] `Quiz` 클래스 작업:** `dev`에서 `feature/quiz-class` 브랜치 생성 -> 코드 작성 -> 푸시 및 PR
-**3. [개발자 B - Mac] `QuizGame` 클래스 작업:** `dev`에서 `feature/quiz-game` 브랜치 생성 -> 코드 작성 -> 푸시 및 PR
-**4. [공통] 최종 통합 및 릴리즈:** `dev`에서 충돌 테스트 완료 후 `main`으로 최종 병합(`git merge dev`) 및 배포.
+### 7.2. 2인 협업 시나리오 흐름 (Hybrid Workflow)
+**1. [공통] 통합 브랜치 세팅:** `main`에 Docker 환경 구축 완료 후 `dev` 브랜치 파생 및 원격 업로드
+**2. [개발자 A - Windows/GUI] `Quiz` 클래스 작업:** - TortoiseGit을 활용하여 `feature/quiz-class` 브랜치 생성 및 체크아웃
+   - `quiz.py` 작성 후 GUI 환경에서 커밋 및 푸시 (Upstream 연동)
+   - GitHub PR(Pull Request) 생성
+**3. [개발자 B - Mac/CLI] `QuizGame` 클래스 작업:** - 터미널(CLI)을 활용하여 `feature/quiz-game` 브랜치 생성 (`git checkout -b`)
+   - `quiz_game.py` 작성 후 터미널에서 커밋 및 푸시 (`git commit`, `git push`)
+   - GitHub PR(Pull Request) 생성
+**4. [공통] 최종 통합 및 릴리즈:** `dev` 브랜치에서 충돌 테스트 완료 후 `main`으로 최종 병합 및 배포.
 
 ### 7.3. 원격 저장소 동기화 (Clone & Pull 실습)
 - 상기 협업 완료 후, 별도의 실습용 로컬 디렉터리에 원격 저장소를 복제(`git clone`)함.
