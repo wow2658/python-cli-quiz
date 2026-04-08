@@ -1,10 +1,25 @@
 {
-  "quizzes": [
-    {
-      "question": "~~의 정답은??",
-      "choices": ["답1", "답2", "답3", "답4"],
-      "answer": 1
-    }
-  ],
-  "best_score": 3
+    "quizzes": [
+        {
+            "question": "~~의 정답은??",
+            "choices": [
+                "답1",
+                "답2",
+                "답3",
+                "답4"
+            ],
+            "answer": 1
+        },
+        {
+            "question": "2번이 답입니다.",
+            "choices": [
+                "1",
+                "2",
+                "3",
+                "4"
+            ],
+            "answer": 2
+        }
+    ],
+    "best_score": 100
 }

@@ -106,15 +106,17 @@ def play_quiz(app_data):
     calc_score = int((score / total_q) * 100) # 100점 만점 환산
     print("\n" + "="*40)
     print(f"🏆 결과: {total_q}문제 중 {score}문제 정답! ({calc_score}점)")
+    
+    current_best = app_data.get("best_score", 0)
+    if calc_score > current_best:
+        print(f"🎉 새로운 최고 점수입니다! (기존: {current_best}점 -> 갱신: {calc_score}점)")
+        app_data["best_score"] = calc_score
+        save_data(app_data) # 신기록 달성 시 즉시 저장
     print("="*40)
 
-# ==========================================
-# [Step 4 추가 1]: 퀴즈 추가 엔진
-# ==========================================
 def add_quiz(app_data):
     print("\n📌 새로운 퀴즈를 추가합니다.")
     try:
-        # 문제 입력 방어
         while True:
             question = input("문제를 입력하세요: ").strip()
             if not question:
@@ -122,7 +124,6 @@ def add_quiz(app_data):
                 continue
             break
 
-        # 선택지 입력 방어 (무조건 4개 입력받도록 고정)
         choices = []
         for i in range(1, 5):
             while True:
@@ -133,7 +134,6 @@ def add_quiz(app_data):
                 choices.append(choice)
                 break
 
-        # 정답 번호 입력 방어
         while True:
             ans_str = input("정답 번호 (1-4): ").strip()
             if not ans_str.isdigit():
@@ -145,7 +145,6 @@ def add_quiz(app_data):
                 continue
             break
 
-        # 딕셔너리 조립 및 메모리 반영
         new_quiz = {
             "question": question,
             "choices": choices,
@@ -156,8 +155,6 @@ def add_quiz(app_data):
             app_data["quizzes"] = []
             
         app_data["quizzes"].append(new_quiz)
-        
-        # [핵심] 입력이 끝나는 즉시 json 파일에 물리적으로 덮어씀 (데이터 보장)
         save_data(app_data)
         print("\n✅ 퀴즈가 성공적으로 추가되었습니다!")
 
@@ -166,9 +163,6 @@ def add_quiz(app_data):
         save_data(app_data)
         sys.exit(0)
 
-# ==========================================
-# [Step 4 추가 2]: 퀴즈 목록 조회 엔진
-# ==========================================
 def list_quizzes(app_data):
     quizzes = app_data.get("quizzes", [])
     
@@ -182,6 +176,18 @@ def list_quizzes(app_data):
         print(f"[{i}] {quiz['question']}")
     print("-" * 40)
 
+# ==========================================
+# [Step 5 추가]: 최고 점수 확인 엔진
+# ==========================================
+def show_score(app_data):
+    best_score = app_data.get("best_score", 0)
+    quizzes = app_data.get("quizzes", [])
+    
+    print("\n" + "="*40)
+    print(f"🏆 현재 최고 점수: {best_score}점")
+    print(f"📂 등록된 총 문제 수: {len(quizzes)}개")
+    print("="*40)
+
 def display_menu():
     print("\n========================================")
     print("        🎯 나만의 퀴즈 게임 🎯")
@@ -194,7 +200,6 @@ def display_menu():
     print("========================================")
 
 def main():
-    # [Step 2 핵심]: 프로그램 시작 시 무조건 데이터를 메모리에 적재함
     app_data = load_data()
 
     while True:
@@ -233,11 +238,11 @@ def main():
         if choice == 1:
             play_quiz(app_data)
         elif choice == 2:
-            add_quiz(app_data)   # <-- 새로 만든 추가 함수 연결!
+            add_quiz(app_data)   
         elif choice == 3:
-            list_quizzes(app_data) # <-- 새로 만든 목록 조회 함수 연결!
+            list_quizzes(app_data) 
         elif choice == 4:
-            print("\n[안내] 점수 확인 기능은 Step 5에서 구현할 예정입니다.")
+            show_score(app_data) # <-- 4번 메뉴 최종 연결 완료!
         elif choice == 5:
             print("\n데이터를 저장하고 프로그램을 정상 종료합니다. 수고하셨습니다!")
             save_data(app_data)
