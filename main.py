@@ -49,6 +49,71 @@ def save_data(data):
         # ensure_ascii=False: 한글 깨짐 방지, indent=4: 예쁘게 줄바꿈 처리
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+# ==========================================
+# [Step 3 추가]: 퀴즈 플레이 엔진
+# ==========================================
+def play_quiz(app_data):
+    quizzes = app_data.get("quizzes", [])
+    
+    # 퀴즈가 하나도 없을 경우 방어
+    if not quizzes:
+        print("\n⚠️ 등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가해주세요!")
+        return
+
+    print(f"\n📝 퀴즈를 시작합니다! (총 {len(quizzes)}문제)")
+    score = 0
+
+    for i, quiz in enumerate(quizzes, 1):
+        print("\n" + "-"*40)
+        print(f"[문제 {i}]")
+        print(quiz["question"] + "\n")
+
+        # 선택지 예쁘게 출력
+        choices = quiz.get("choices", [])
+        for idx, choice in enumerate(choices, 1):
+            print(f"{idx}. {choice}")
+
+        # [핵심]: 각 문제마다 사용자가 올바른 정답을 낼 때까지 무한 방어 루프
+        while True:
+            try:
+                raw_ans = input("\n✅ 정답 번호를 입력하세요: ")
+            except (KeyboardInterrupt, EOFError):
+                print("\n\n⚠️ 퀴즈 도중 강제 종료 시그널이 감지되었습니다.")
+                print("데이터를 안전하게 보존한 후 프로그램을 종료합니다...")
+                save_data(app_data)
+                sys.exit(0)
+
+            ans_str = raw_ans.strip()
+            
+            if not ans_str:
+                print("⚠️ 값을 입력하지 않았습니다.")
+                continue
+            if not ans_str.isdigit():
+                print("⚠️ 숫자로만 입력해주세요.")
+                continue
+
+            ans_int = int(ans_str)
+            if ans_int < 1 or ans_int > len(choices):
+                print(f"⚠️ 1에서 {len(choices)} 사이의 번호를 선택해주세요.")
+                continue
+
+            # 정상 입력 검증 통과 -> 정답 판정
+            if ans_int == quiz["answer"]:
+                print("🎉 정답입니다!")
+                score += 1
+            else:
+                print(f"❌ 틀렸습니다! (정답: {quiz['answer']}번)")
+            
+            break # while 방어 루프를 탈출하고 다음 문제(for문)로 넘어감
+
+    # 결과 출력
+    total_q = len(quizzes)
+    calc_score = int((score / total_q) * 100) # 100점 만점 환산
+    print("\n" + "="*40)
+    print(f"🏆 결과: {total_q}문제 중 {score}문제 정답! ({calc_score}점)")
+    print("="*40)
+    # (참고) Step 5에서 여기에 '최고 점수 갱신' 로직이 추가될 예정입니다.
+
 def display_menu():
     print("\n========================================")
     print("        🎯 나만의 퀴즈 게임 🎯")
@@ -98,7 +163,7 @@ def main():
 
         # 메뉴 분기점
         if choice == 1:
-            print("\n[안내] 퀴즈 풀기 기능은 Step 3에서 구현할 예정입니다.")
+            play_quiz(app_data)  # <-- 새로 만든 함수 연결!
         elif choice == 2:
             print("\n[안내] 퀴즈 추가 기능은 Step 4에서 구현할 예정입니다.")
         elif choice == 3:
