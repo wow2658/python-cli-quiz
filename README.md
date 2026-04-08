@@ -16,6 +16,11 @@
 - **VCS:** Git CLI (Mac) & TortoiseGit (Windows) & GitHub
 - **특이사항:** 본 프로젝트는 'Windows + GUI vs Mac + CLI 환경에서의 실무 협업 시나리오'를 가정하여 인프라를 설계함. Mac 환경(개발자 B)은 Git의 원리 체화를 위해 순수 터미널 명령어(CLI)를 활용하고, Windows 환경(개발자 A)은 실무 생산성을 위해 GUI 툴(TortoiseGit)을 활용하는 하이브리드 워크플로우를 성공적으로 검증함.
 
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/f929a4ab-78fb-493f-95b7-8ef5a2b17707" width="833" alt="하이브리드 Git 워크플로우">
+</p>
+
 ---
 
 ## 3. 프로젝트 파일 구조
@@ -32,7 +37,6 @@ python-cli-quiz/
 └── docs/
     └── screenshots/   # 실행 결과 및 검증 증빙 이미지 폴더
 ```
-
 ---
 
 ## 4. 프로그램 실행 및 핵심 기능
@@ -43,15 +47,23 @@ python-cli-quiz/
 # 초기 빌드 및 퀴즈 게임 실행 (사용자 키보드 입력 활성화)
 docker compose run --rm quiz-app
 ```
-*(※ `up -d` 대신 `run --rm`을 채택한 이유: 사용자의 `input()` 입력을 실시간으로 대기하는 대화형 CLI 특성상, STDIN 통신을 완벽히 지원하고 종료 시 컨테이너 찌꺼기를 남기지 않기 위함)*
+
+**💡 실행 명령어 채택 배경 (`up -d` vs `run --rm`)**
+본 프로젝트는 백그라운드에서 상시 구동되는 웹 서버(`up -d`)가 아닌, 사용자의 키보드 입력(`input()`)을 실시간으로 대기하고 반응해야 하는 **대화형 CLI 프로그램**임. 이를 위해 `run --rm` 명령어를 채택하여 다음과 같은 기술적 이점을 확보함.
+* **STDIN/TTY 자동 할당:** `docker compose run` 명령어는 내부적으로 `-it` (Interactive & TTY) 옵션을 기본적으로 내포하여 실행됨. 이를 통해 터미널과 컨테이너 간의 STDIN(표준 입력) 통신 채널이 열려, 사용자의 키보드 입력이 즉각적으로 프로그램에 전달됨.
+* **컨테이너 라이프사이클 최적화 (`--rm`):** 1회성 플레이(테스트)가 목적이므로, 게임 종료 시 불필요한 컨테이너 찌꺼기(가비지)를 즉시 자동 파기하여 호스트의 스토리지 낭비를 원천 차단함.
+
+  
+<p align="center">
+  <img width="1120" height="742" alt="도커명령어 비교 Screenshot 2026-04-08 at 11 23 21 AM" src="https://github.com/user-attachments/assets/1fe15405-a6be-4a82-bce0-e848581b43c5" />
+</p>
 
 ### 핵심 기능 명세
-1. **메뉴 시스템:** 퀴즈 풀기, 추가, 목록, 점수 확인, 종료의 5가지 메뉴 제공.
-2. **퀴즈 플레이 및 정답 판정:** 저장된 퀴즈를 순차 출제하고 정답/오답을 판정함.
-3. **입력 오류 및 안전 종료 방어 로직:**
-   - 비정상적인 값 입력 시 프로그램 종료 없이 예외 메시지 출력 후 재입력을 요구함.
-   - `Ctrl+C` (KeyboardInterrupt) 등 발생 시, 현재 상태를 `state.json`에 강제 저장한 뒤 안전하게 프로세스를 종료함.
-
+1. **메뉴 시스템:** 퀴즈 풀기, 추가, 목록, 점수 확인, 종료의 5가지 직관적인 CLI 메뉴 제공.
+2. **퀴즈 플레이 및 정답 판정:** 저장된 퀴즈를 순차적으로 출제하고 실시간으로 정답/오답을 판정하여 피드백 제공.
+3. **예외 처리 및 안전 종료 방어 로직 (Fail-Safe):**
+   - **입력 오류 방어:** 타입 불일치 등 비정상적인 값 입력 시, 프로그램이 크래시(Crash)되지 않고 예외 메시지 출력 후 안전하게 재입력을 요구하는 견고한 루프를 유지함.
+   - **강제 종료 대응 (`Ctrl+C`):** `KeyboardInterrupt` 등 예기치 않은 종료 시그널이 발생하더라도, 메모리에 있는 현재 진행 상태와 데이터를 `state.json`에 강제 동기화(저장)한 뒤 프로세스를 안전하게 종료(Graceful Shutdown)하여 데이터 유실을 방지함.
 ---
 
 ## 5. 객체 지향 코드 구조 및 설계
@@ -65,6 +77,10 @@ docker compose run --rm quiz-app
 
 ### 💡 기술적 의사결정
 - **함수형이 아닌 클래스 채택:** 데이터와 제어 로직을 객체 단위로 묶어 응집도를 높이고 전역 변수 남용을 차단함. 책임 분리를 통해 향후 채점 로직이나 입출력 포맷이 변경되어도 상호 간섭을 최소화함.
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/761189d5-cbfc-47eb-ad06-185825217e1d" width="490" alt="객체지향 시스템 아키텍처 (UML)">
+</p>
 
 ---
 
@@ -98,6 +114,10 @@ docker compose run --rm quiz-app
 - **`main` (Production):** 제품 배포용 무결점 상태 보장 (직접 푸시 지양).
 - **`dev` (Development):** 개발된 기능이 모이는 통합 테스트 브랜치.
 - **`feature/...` (Feature):** 개별 기능 개발을 위한 격리 브랜치. 완료 시 `dev`로 PR 병합.
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/4e61d7a7-9e1b-4ab4-9b29-53326cc478d7" width="1500" alt="Git 브랜치 전략">
+</p>
 
 ### 7.2. 2인 협업 시나리오 흐름 (Hybrid Workflow)
 **1. [공통] 통합 브랜치 세팅:** `main`에 Docker 환경 구축 완료 후 `dev` 브랜치 파생 및 원격 업로드
