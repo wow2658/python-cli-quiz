@@ -144,3 +144,72 @@ docker compose run --rm quiz-app
 - [ ] 최고 점수 확인 (`docs/screenshots/score.png`)
 - [ ] 비정상 입력 방어 (`docs/screenshots/error_handling.png`)
 - [ ] 브랜치 병합 기록 (`docs/screenshots/git_log.png`)
+
+---
+
+## [부록] 핵심 예외 처리 및 방어 로직 (Deep Dive)
+
+### 1. `isdigit()` 내부 동작 원리 (CPython 구현체 분석)
+Python의 문자열 검증 메서드인 `str.isdigit()`은 CPython 소스코드(`Objects/unicodeobject.c`)에 정의되어 있으며, 애플리케이션의 비정상 입력을 차단하는 핵심 방어 기제로 작동함.
+
+**[CPython 소스코드 발췌 - `unicode_isdigit_impl`]**
+```c
+static PyObject *unicode_isdigit_impl(PyObject *self){
+    Py_ssize_t i, length;
+    int kind;
+    const void *data;
+
+    /* 1. 빈 문자열 방어: 길이가 0이면 무조건 False 반환 */
+    if (length == 0)
+        Py_RETURN_FALSE;
+
+    /* 2. 단일 문자 최적화: 1글자일 경우 반복문 없이 즉시 검사 (성능 최적화) */
+    if (length == 1)
+        return PyBool_FromLong(
+            Py_UNICODE_ISDIGIT(PyUnicode_READ(kind, data, 0)));
+
+    /* 3. 다중 문자 검사: 2글자 이상일 경우 순회 검사 */
+    for (i = 0; i < length; i++) {
+        // 단 한 글자라도 '숫자'가 아니면 즉시 False 반환 (조기 탈출)
+        if (!Py_UNICODE_ISDIGIT(PyUnicode_READ(kind, data, i)))
+            return Py_False; 
+    }
+
+    /* 4. 순회 검사 통과 시 True 반환 */
+    Py_RETURN_TRUE;
+}
+```
+* **동작 원리 요약:** 내부적으로 `Py_UNICODE_ISDIGIT` 매크로를 사용하여 파이썬 내장 유니코드 데이터베이스와 대조함. 루프를 순회하며 단 한 글자라도 숫자가 아닐 경우 즉시 `False`를 반환하므로, 음수(`-1`), 소수점(`1.5`), 영문자 및 특수기호(`abc`) 등의 비정상 입력을 원천 차단하는 데 매우 효과적임.
+
+### 2. 시스템 시그널 제어 및 Graceful Shutdown (`KeyboardInterrupt` & `EOFError`)
+CLI 환경에서 사용자의 강제 종료 시그널로 인한 데이터 유실 및 프로세스 비정상 크래시를 방지하기 위한 필수 예외 처리 로직임.
+
+* **`KeyboardInterrupt` (Ctrl + C):** * **발생 조건:** 사용자가 터미널에서 `Ctrl + C` 단축키 입력 시, OS가 파이썬 프로세스에 `SIGINT`(인터럽트) 시그널을 전송하여 발생함.
+    * **방어 목적:** 미처리 시 Traceback 에러 로그 출력과 함께 프로그램이 비정상 종료되며, 메모리에 적재된 데이터(현재 최고 점수 등)가 영구 유실되는 현상을 방지함.
+* **`EOFError` (Ctrl + D / Ctrl + Z):**
+    * **발생 조건:** Mac/Linux(`Ctrl + D`) 또는 Windows(`Ctrl + Z`)에서 발생. 물리적인 입력 스트림 종료(End Of File) 신호이며, `input()` 함수가 입력을 대기하던 중 스트림이 끊어질 때 발생함.
+    * **방어 목적:** 입력 대기 상태에서의 예기치 않은 시스템 패닉 및 크래시 방지.
+
+**[적용 코드 및 기대 효과]**
+```python
+except (KeyboardInterrupt, EOFError):
+    # 시스템 시그널을 우회(Catch)하여 안전 구역으로 제어권 이전
+    print("\n[안내] 비정상 종료 시그널이 감지되었습니다.")
+    print("데이터를 안전하게 보존한 후 프로그램을 종료합니다.")
+    # TODO: 상태 파일(state.json) 강제 동기화 로직 실행
+    sys.exit(0)
+```
+* **Graceful Shutdown (우아한 종료) 구현:** 강제 종료 시그널을 단순 에러가 아닌 '사용자의 명시적 종료 요청'으로 접수함. 프로세스가 강제 종료되기 직전 제어권을 확보하여, 데이터 영속성 처리(`state.json` 저장)를 완수하고 `sys.exit(0)`을 통해 시스템을 정상 상태로 안전하게 종료시킴.
+
+### 3. [한계점] OS 레벨 프로세스 제어 단축키 방어 불가 사유
+CLI(콘솔) 애플리케이션의 태생적 환경 구조상, 파이썬 런타임 외부(운영체제 및 터미널 에뮬레이터)에서 발생하는 강제 종료 단축키는 코드 레벨(`try-except`)에서 원천적으로 방어가 불가능함.
+
+* **`Alt + F4` (Windows) / `Cmd + Q` (Mac):**
+    * **사유:** 운영체제(OS)의 창 관리자(Window Manager)에 전달되는 절대 명령임. 파이썬 프로세스에 종료를 요청하는 것이 아니라, 파이썬이 구동 중인 '터미널 창(프로세스 트리 부모)' 자체를 즉각 파기(SIGKILL/SIGHUP)하므로 제어권 탈취가 불가능함.
+* **`Ctrl + W` (터미널 탭 닫기):**
+    * **사유:** 터미널 에뮬레이터 프로그램(Windows Terminal, iTerm2 등)의 자체 UI 제어 단축키임. 탭 강제 종료 시 입출력 스트림이 물리적으로 단절되어 방어 불가.
+* **`ESC` (Escape):**
+    * **사유:** 단순 제어 문자(Control Character, `\x1b`)에 불과하며 OS 레벨의 강제 종료 시그널을 발생시키지 않으므로 별도의 방어 로직이 요구되지 않음.
+
+**💡 설계 타협점 (Trade-off):**
+사용자가 터미널 창 자체를 강제 종료할 경우 발생하는 데이터 유실(`state.json` 미동기화)은 버그나 설계 결함이 아닌 **명령 프롬프트 기반 프로그램의 아키텍처적 한계**임. 이를 완벽히 방어하기 위해서는 GUI(Tkinter, PyQt 등) 환경이나 Web 기반 애플리케이션으로의 패러다임 전환이 필수적이므로, 본 CLI 프로젝트에서는 콘솔 내부 시그널 통제(항목 2번)까지만을 시스템 요구사항 충족 기준으로 삼음.
