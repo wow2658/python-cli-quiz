@@ -44,14 +44,9 @@ def load_data():
         return DEFAULT_DATA.copy()
 
 def save_data(data):
-    """현재 메모리의 상태(data)를 json 파일에 안전하게 덮어씁니다."""
     with open(STATE_FILE, "w", encoding="utf-8") as f:
-        # ensure_ascii=False: 한글 깨짐 방지, indent=4: 예쁘게 줄바꿈 처리
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# ==========================================
-# [Step 3 추가]: 퀴즈 플레이 엔진
-# ==========================================
 def play_quiz(app_data):
     quizzes = app_data.get("quizzes", [])
     
@@ -112,7 +107,80 @@ def play_quiz(app_data):
     print("\n" + "="*40)
     print(f"🏆 결과: {total_q}문제 중 {score}문제 정답! ({calc_score}점)")
     print("="*40)
-    # (참고) Step 5에서 여기에 '최고 점수 갱신' 로직이 추가될 예정입니다.
+
+# ==========================================
+# [Step 4 추가 1]: 퀴즈 추가 엔진
+# ==========================================
+def add_quiz(app_data):
+    print("\n📌 새로운 퀴즈를 추가합니다.")
+    try:
+        # 문제 입력 방어
+        while True:
+            question = input("문제를 입력하세요: ").strip()
+            if not question:
+                print("⚠️ 빈 문제는 추가할 수 없습니다. 다시 입력해주세요.")
+                continue
+            break
+
+        # 선택지 입력 방어 (무조건 4개 입력받도록 고정)
+        choices = []
+        for i in range(1, 5):
+            while True:
+                choice = input(f"선택지 {i}: ").strip()
+                if not choice:
+                    print(f"⚠️ 빈 선택지는 추가할 수 없습니다. 선택지 {i}를 다시 입력해주세요.")
+                    continue
+                choices.append(choice)
+                break
+
+        # 정답 번호 입력 방어
+        while True:
+            ans_str = input("정답 번호 (1-4): ").strip()
+            if not ans_str.isdigit():
+                print("⚠️ 숫자로만 입력해주세요.")
+                continue
+            ans_int = int(ans_str)
+            if ans_int < 1 or ans_int > 4:
+                print("⚠️ 1에서 4 사이의 번호를 선택해주세요.")
+                continue
+            break
+
+        # 딕셔너리 조립 및 메모리 반영
+        new_quiz = {
+            "question": question,
+            "choices": choices,
+            "answer": ans_int
+        }
+        
+        if "quizzes" not in app_data:
+            app_data["quizzes"] = []
+            
+        app_data["quizzes"].append(new_quiz)
+        
+        # [핵심] 입력이 끝나는 즉시 json 파일에 물리적으로 덮어씀 (데이터 보장)
+        save_data(app_data)
+        print("\n✅ 퀴즈가 성공적으로 추가되었습니다!")
+
+    except (KeyboardInterrupt, EOFError):
+        print("\n\n⚠️ 퀴즈 추가 도중 강제 종료 시그널이 감지되었습니다.")
+        save_data(app_data)
+        sys.exit(0)
+
+# ==========================================
+# [Step 4 추가 2]: 퀴즈 목록 조회 엔진
+# ==========================================
+def list_quizzes(app_data):
+    quizzes = app_data.get("quizzes", [])
+    
+    if not quizzes:
+        print("\n⚠️ 등록된 퀴즈가 없습니다.")
+        return
+
+    print(f"\n📋 등록된 퀴즈 목록 (총 {len(quizzes)}개)")
+    print("-" * 40)
+    for i, quiz in enumerate(quizzes, 1):
+        print(f"[{i}] {quiz['question']}")
+    print("-" * 40)
 
 def display_menu():
     print("\n========================================")
@@ -161,18 +229,18 @@ def main():
             print("⚠️ 잘못된 입력입니다. 1-5 사이의 숫자를 입력하세요.")
             continue
 
-        # 메뉴 분기점
+        # 메뉴 분기점 연동 완료
         if choice == 1:
-            play_quiz(app_data)  # <-- 새로 만든 함수 연결!
+            play_quiz(app_data)
         elif choice == 2:
-            print("\n[안내] 퀴즈 추가 기능은 Step 4에서 구현할 예정입니다.")
+            add_quiz(app_data)   # <-- 새로 만든 추가 함수 연결!
         elif choice == 3:
-            print("\n[안내] 퀴즈 목록 기능은 Step 4에서 구현할 예정입니다.")
+            list_quizzes(app_data) # <-- 새로 만든 목록 조회 함수 연결!
         elif choice == 4:
             print("\n[안내] 점수 확인 기능은 Step 5에서 구현할 예정입니다.")
         elif choice == 5:
             print("\n데이터를 저장하고 프로그램을 정상 종료합니다. 수고하셨습니다!")
-            save_data(app_data)  # <-- 5번 누르고 정상 종료 시에도 저장!
+            save_data(app_data)
             break
 
 if __name__ == "__main__":
