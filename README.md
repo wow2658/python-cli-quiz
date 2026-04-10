@@ -47,6 +47,11 @@ docker compose run --rm quiz-app
 * **STDIN/TTY 자동 할당:** `run` 명령어는 내부적으로 `-it` (Interactive & TTY) 옵션을 내포하여, 사용자의 키보드 입력이 즉각적으로 컨테이너 내부에 전달되도록 통신 채널을 오픈함.
 * **컨테이너 라이프사이클 최적화 (`--rm`):** 1회성 플레이가 목적이므로, 게임 종료 시 불필요한 컨테이너 가비지를 즉시 파기하여 호스트 컴퓨터의 스토리지 낭비를 원천 차단함.
 
+<p align="center">
+  <img width="1120" height="742" alt="도커명령어 비교 Screenshot 2026-04-08 at 11 23 21 AM" src="https://github.com/user-attachments/assets/1fe15405-a6be-4a82-bce0-e848581b43c5" />
+</p>
+
+
 ---
 
 ## 4. 프로젝트 아키텍처 및 객체 지향(OOP) 설계
@@ -88,16 +93,48 @@ python-cli-quiz/
       ┃
       ┗━ (종료 후 저장) ━▶ [file_io] ↔ (state.json)
 ```
+게임 종료 후 `state.json` 읽기/쓰기 흐름:
+`[quiz_game] (게임 종료 및 ScoreRecord 객체 반환)` ➔ `[main] (app_data 딕셔너리에 기록 추가 및 최고점수 갱신)` ➔ `[file_io.save_data] (JSON 직렬화 및 임시 파일을 활용한 안전한 덮어쓰기)` ➔ `[state.json]`
 
+### 💡 [참고] 데이터 구조 미리보기 (state.json)
+퀴즈 마스터 데이터(정적)와 플레이어의 기록(동적)을 독립적인 키(Key)로 분리한 계층형 도메인 구조임.
+
+```json
+{
+    "quizzes": [
+        {
+            "question": "[Easy] docker-compose.yml 파일에 정의된 모든 서비스를 백그라운드에서 실행하는 가장 기본적인 명령어는?",
+            "choices": [
+                "docker run -bg",
+                "docker compose up -d",
+                "docker start --all",
+                "docker compose start -b"
+            ],
+            "answer": 2,
+            "hint": "백그라운드(background)에서 실행한다는 뜻으로, 데몬(daemon) 모드의 첫 글자를 옵션으로 씁니다."
+        }
+    ],
+    "best_score": 100.0,
+    "history": [
+        {
+            "timestamp": "2026-04-10 12:30:00",
+            "total_questions": 10,
+            "correct_answers": 10,
+            "final_score": 100.0
+        }
+    ]
+}
+```
 ---
 
 ## 5. 핵심 기능 및 데이터 영속성
 
 ### 🎮 주요 게임 기능
-1. **문제 수 선택 및 랜덤 출제:** 원하는 문제 수를 지정할 수 있으며, 출제 순서는 매번 무작위(`random.shuffle`)로 섞임.
-2. **힌트 및 감점 시스템:** 막힐 경우 `'h'`를 입력해 힌트를 열람할 수 있으나, 정답 시 최종 점수에서 페널티가 차감됨.
-3. **히스토리 누적:** 매 플레이 시각과 정답률, 획득 점수가 객체화되어 영구 보존됨.
-4. **중도 포기(Escape Hatch):** 문제 추가나 퀴즈 진행 도중 언제든 `'q'`를 입력하면 즉시 메인 메뉴로 안전하게 복귀함.
+1. **기본 퀴즈 제공 및 랜덤 출제:** 초기 실행 시 `state.json`에 **10개의 퀴즈 데이터가 기본 내장**되어 있음. 출제 순서는 무작위(`random.shuffle`)로 섞임.
+2. **힌트 및 감점 시스템:** 정답이 막힐 경우 `'h'`를 입력해 힌트를 열람할 수 있으며, 해당 문제 정답 시 최종 점수에서 페널티가 차감됨.
+3. **히스토리 누적:** 플레이 시각, 정답률, 획득 점수가 객체화되어 영구 보존됨.
+4. **중도 포기(Escape Hatch):** 언제든 `'q'`를 입력하면 메인 메뉴로 즉시 복귀함.
+5. **예외 처리 방어:** 사용자의 공백, 문자, 범위를 벗어난 숫자 등 비정상 입력에 대해 크래시 없이 대응함.
 
 ### 💾 데이터 파일 동기화 (Volume Mount)
 * `docker-compose.yml` 내 볼륨 마운트(`.:/app`)를 설정하여, 도커 컨테이너가 파기되더라도 최고 점수와 퀴즈 데이터(`state.json`)는 내 컴퓨터에 영구 보존됨.
@@ -105,29 +142,69 @@ python-cli-quiz/
 
 ---
 
-## 6. Git 워크플로우 (간소화된 Git Flow)
-2인 협업 상황을 가정하여, 실무 표준에 가까운 **간소화된 Git Flow(Simplified Git Flow)** 전략을 도입함.
+## 6. Git 워크플로우 및 협업 증빙
 
-### 🌿 브랜치 전략
-- **`main` (Production):** 제품 배포용 무결점 상태 보장 (직접 푸시 지양).
-- **`dev` (Development):** 개발된 기능이 모이는 통합 테스트 브랜치.
-- **`feature/...` (Feature):** 개별 기능 개발을 위한 격리 브랜치. 완료 시 `dev`로 PR 병합.
+### 🌿 브랜치 전략 및 커밋 컨벤션
+* **브랜치 전략:**
+  * `main` (Production): 배포용 무결점 상태 (직접 푸시 지양)
+  * `dev` (Development): 통합 테스트 브랜치
+  * `feature/...`: 개별 기능 격리 브랜치 (완료 시 `dev`로 PR 병합)
+* **커밋 단위 및 규칙:** 기능 단위로 커밋을 분할하며, `[Feat]`, `[Fix]`, `[Docs]`, `[Refactor]` 접두사를 명시하여 목적을 직관적으로 파악하도록 강제함.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/4e61d7a7-9e1b-4ab4-9b29-53326cc478d7" width="1500" alt="Git 브랜치 전략">
 </p>
 
+### 📸 작업 증빙 및 시연 결과 (스크린샷)
+> **평가 요구사항 증빙 자료:** (아래 괄호 안의 위치에 실제 스냅샷 이미지 링크 삽입 필요)
+- [x] **GitHub 원격 저장소 커밋 (10개 이상):** https://github.com/wow2658/python-cli-quiz.git)]
+- [x] **`git log --oneline --graph` 병합 내역:**
+<img width="2558" height="836" alt="image" src="https://github.com/user-attachments/assets/8f1a130a-1ce2-46b2-9671-2f9846ef4533" />
+
+- [x] **`git clone` 및 `pull` 실습 내역:** 
+
+
+<img width="1000" height="430" alt="image" src="https://github.com/user-attachments/assets/d73044fe-0cd4-43c0-8819-6792bfde76ab" />
+
+<img width="697" height="567" alt="깃애드Screenshot 2026-04-06 at 8 21 58 PM" src="https://github.com/user-attachments/assets/7a7aa5a3-80e0-4327-b3f7-f019e0d0a807" />
+
+<img width="477" height="332" alt="Screenshot 2026-04-07 at 2 12 34 PM" src="https://github.com/user-attachments/assets/e520e910-0bb9-4ee5-9fdb-e922bde0a1a0" />
+
+- [x] **프로그램 메뉴 정상 출력 확인:** [이미지 삽입]
+ <img width="427" height="180" alt="image" src="https://github.com/user-attachments/assets/f4e73834-ea36-4a1c-95c0-1284c89e3756" />
+- [x] **퀴즈 정답/오답 및 예외(공백/문자) 방어 판정:** [이미지 삽입]
+<img width="637" height="42" alt="image" src="https://github.com/user-attachments/assets/8afcd057-12ec-44c9-be4c-c8035b5c4d87" />
+<img width="690" height="243" alt="image" src="https://github.com/user-attachments/assets/56c07757-9a12-462f-b22c-77174f03ae7c" />
+<img width="699" height="294" alt="image" src="https://github.com/user-attachments/assets/4a5923fc-77eb-487c-b4c6-30a198ab2b2c" />
+<img width="527" height="189" alt="image" src="https://github.com/user-attachments/assets/160b2fec-946a-46ff-9616-49957222f2ce" />
+<img width="364" height="116" alt="image" src="https://github.com/user-attachments/assets/a6d5bca5-ec9d-4655-8eb9-a562a8bd45f1" />
+
+
+
+- [x] **컨테이너 재실행 후 추가된 퀴즈 및 점수 유지:** [이미지 삽입]
+<img width="355" height="296" alt="image" src="https://github.com/user-attachments/assets/a6045741-46b3-42e5-aa9f-4c7db88bc5d7" />
+<img width="310" height="205" alt="image" src="https://github.com/user-attachments/assets/5cedf4e9-bf19-4e27-ba6c-150d583aa1f1" />
+<img width="521" height="1217" alt="image" src="https://github.com/user-attachments/assets/33a0ae39-79d5-4cd7-baf5-31bc74c38edf" />
+
 ---
 
-## 7. 시스템 검증 및 테스트 결과
-> 아래 경로에 실행 및 검증 증빙 스크린샷을 첨부함.
+## 7. 기술적 의사결정 기록 (Tech Decision Records)
+> 객체 지향 설계 및 아키텍처 구성에 대한 심층 판단 근거임.
 
-- [ ] 메인 메뉴 화면 (`docs/screenshots/menu.png`)
-- [ ] 퀴즈 풀기 및 정답 판정 (`docs/screenshots/play.png`)
-- [ ] 새로운 퀴즈 추가 (`docs/screenshots/add_quiz.png`)
-- [ ] 최고 점수 확인 (`docs/screenshots/score.png`)
-- [ ] 비정상 입력 방어 (`docs/screenshots/error_handling.png`)
-- [ ] 브랜치 병합 기록 (`docs/screenshots/git_log.png`)
+### 7.1. 패러다임: 함수(Function) 대신 클래스(Class)를 도입한 이유
+* **상태(State)와 행위(Behavior)의 응집:** 힌트 사용 기록이나 퀴즈 데이터 목록은 계속 변하는 '상태'를 가짐. 순수 함수로만 구현할 경우 전역 변수(Global)에 의존하거나 매개변수를 깊게 전달해야 하는 한계가 발생함. 클래스를 통해 각자의 상태를 스스로 관리하도록 캡슐화함.
+* **책임의 분리:** 입력 검증(UI), 게임 진행(Engine), 파일 저장(I/O) 로직을 각 클래스와 모듈로 격리하여, UI가 변경되더라도 채점 비즈니스 로직에는 영향을 주지 않도록 결합도를 낮춤.
+
+### 7.2. 데이터베이스: JSON 채택 이유 및 구조 설계
+* **채택 사유:** 별도의 DB 엔진 설치 없이 내장 `json` 모듈로 객체 직렬화/역직렬화가 가능하여 CLI 경량 환경에 최적화됨. 사람이 직접 읽고 수정(Human-readable)하기도 용이함.
+* **구조 설계의 이유 (`{"quizzes": [], "best_score": 0, "history": []}`):** 퀴즈 마스터 데이터(정적)와 유저 플레이 기록(동적)을 하나의 파일 내에서 논리적 도메인으로 분할함. 이를 통해 앱 로드 시 각 키보드별로 적절한 클래스 객체에 매핑하기 쉬워짐.
+* **파일 I/O 예외 처리(`try/except`)의 필수성:** 파일 시스템은 외부 자원임. 권한 부족, 디스크 용량, 경로 누락 등으로 언제든 접근에 실패할 수 있으므로, 크래시 방지를 위해 `try/except` 처리가 반드시 요구됨.
+* **파일 손상 복구 로직 (Resilience):** 강제 종료 등으로 `state.json`이 파괴되어 `JSONDecodeError`가 발생할 경우, 프로그램이 죽지 않고 메모리에 하드코딩된 `DEFAULT_DATA`를 반환하여 기본 퀴즈 세트로 서비스를 자동 초기화/복구하도록 설계함.
+* **[한계점] 데이터 1,000건 이상 증가 시:** JSON은 전체 파일을 메모리에 적재하여 수정 후 통째로 덮어쓰는 구조임. 데이터가 대규모로 커지면 메모리 오버헤드가 급증하고 탐색 속도가 저하됨. 이 시점부터는 SQLite와 같은 임베디드 RDBMS로 마이그레이션해야 함.
+
+### 7.3. 시스템 안정성 제어 및 요구사항 변경 대응
+* **Graceful Shutdown (`Ctrl+C`, `EOF`):** 터미널 환경에서 `KeyboardInterrupt` 시 즉각 종료하지 않고 `y/n` 재확인 프롬프트를 띄움. 물리적 단절(`EOFError`) 발생 시에도 즉시 파기하지 않고, `sys.stdin = open('/dev/tty', 'r')`를 호출해 OS 레벨 터미널 재연결을 시도하거나, 불가피할 시 메모리의 데이터를 안전하게 저장(`save_data()`)한 뒤 종료함.
+* **확장성 (요구사항 변경 시 타격 범위):** 만약 "정답 채점 방식"이나 "선택지 개수" 규칙이 변경될 경우, 전체 구조를 수정할 필요 없이 순수 비즈니스 로직을 담당하는 `quiz_evaluator.py` 내부 함수와 `console_display.py`의 출력 포맷 일부만 수정하면 됨. 데이터 구조 로직(`quiz.py`)과 게임 진행 엔진(`quiz_game.py`)은 OCP(개방-폐쇄 원칙)에 따라 수정 없이 그대로 재사용 가능함.
 
 ---
 
