@@ -15,6 +15,11 @@
 - **Virtualization:** Docker (Windows/Mac 다른 기종 간 100% 동일한 Linux 실행 환경 보장)
 - **VCS:** Git CLI (Mac) & TortoiseGit (Windows) & GitHub
 
+<img width="369" height="168" alt="Screenshot 2026-04-10 at 8 34 38 PM" src="https://github.com/user-attachments/assets/67b889a1-6521-4490-8842-137e12a7d38d" />
+<img width="637" height="62" alt="image" src="https://github.com/user-attachments/assets/b23ba498-50cc-4109-8270-f962e652d5ac" />
+
+
+
 ### 🛠 하이브리드 실무 협업 시나리오 검증
 본 프로젝트는 'Windows + GUI vs Mac + CLI 환경에서의 실무 협업 시나리오'를 가정하여 인프라를 설계함. 
 Mac 환경(개발자 B)은 Git의 원리 체화를 위해 순수 터미널 명령어(CLI)를 활용하고, Windows 환경(개발자 A)은 실무 생산성을 위해 GUI 툴(TortoiseGit)을 활용하는 하이브리드 워크플로우를 성공적으로 검증함.
@@ -157,22 +162,52 @@ python-cli-quiz/
 
 ### 📸 작업 증빙 및 시연 결과 (스크린샷)
 > **평가 요구사항 증빙 자료:** (아래 괄호 안의 위치에 실제 스냅샷 이미지 링크 삽입 필요)
+
 - [x] **GitHub 원격 저장소 커밋 (10개 이상):** https://github.com/wow2658/python-cli-quiz.git)]
 - [x] **`git log --oneline --graph` 병합 내역:**
+      
 <img width="2558" height="836" alt="image" src="https://github.com/user-attachments/assets/8f1a130a-1ce2-46b2-9671-2f9846ef4533" />
 
-- [x] **`git clone` 및 `pull` 실습 내역:** 
+- [x] **Git 기초 명령어 7종(init, add, commit, push, pull, checkout, clone) 실습 내역** 
 
-
-<img width="1000" height="430" alt="image" src="https://github.com/user-attachments/assets/d73044fe-0cd4-43c0-8819-6792bfde76ab" />
-
-<img width="697" height="567" alt="깃애드Screenshot 2026-04-06 at 8 21 58 PM" src="https://github.com/user-attachments/assets/7a7aa5a3-80e0-4327-b3f7-f019e0d0a807" />
+clone
 
 <img width="477" height="332" alt="Screenshot 2026-04-07 at 2 12 34 PM" src="https://github.com/user-attachments/assets/e520e910-0bb9-4ee5-9fdb-e922bde0a1a0" />
 
-- [x] **프로그램 메뉴 정상 출력 확인:** [이미지 삽입]
+init
+
+<img width="760" height="138" alt="image" src="https://github.com/user-attachments/assets/1192c8f9-e633-4f7d-b858-b4f9ff6fdf8a" />
+
+add
+
+<img width="697" height="567" alt="깃애드Screenshot 2026-04-06 at 8 21 58 PM" src="https://github.com/user-attachments/assets/7a7aa5a3-80e0-4327-b3f7-f019e0d0a807" />
+
+
+commit
+
+<img width="540" height="184" alt="image" src="https://github.com/user-attachments/assets/30d01867-ad49-4dca-9c75-2f2f1c4c22bc" />
+
+push
+
+<img width="1000" height="430" alt="image" src="https://github.com/user-attachments/assets/d73044fe-0cd4-43c0-8819-6792bfde76ab" />
+
+pull
+
+<img width="607" height="153" alt="image" src="https://github.com/user-attachments/assets/f08e0799-fe4c-4874-a751-5bd9c34e61b8" />
+
+checkout
+
+<img width="550" height="113" alt="image" src="https://github.com/user-attachments/assets/627b9ac2-55ab-4e54-a1f8-8e1fd6bbdec8" />
+
+
+
+
+- [x] **프로그램 메뉴 정상 출력 확인:** 
+      
  <img width="427" height="180" alt="image" src="https://github.com/user-attachments/assets/f4e73834-ea36-4a1c-95c0-1284c89e3756" />
-- [x] **퀴즈 정답/오답 및 예외(공백/문자) 방어 판정:** [이미지 삽입]
+ 
+- [x] **퀴즈 정답/오답 및 예외(공백/문자) 방어 판정:**
+      
 <img width="637" height="42" alt="image" src="https://github.com/user-attachments/assets/8afcd057-12ec-44c9-be4c-c8035b5c4d87" />
 <img width="690" height="243" alt="image" src="https://github.com/user-attachments/assets/56c07757-9a12-462f-b22c-77174f03ae7c" />
 <img width="699" height="294" alt="image" src="https://github.com/user-attachments/assets/4a5923fc-77eb-487c-b4c6-30a198ab2b2c" />
@@ -181,7 +216,7 @@ python-cli-quiz/
 
 
 
-- [x] **컨테이너 재실행 후 추가된 퀴즈 및 점수 유지:** [이미지 삽입]
+- [x] **컨테이너 재실행 후 추가된 퀴즈 및 점수 유지:** 
 <img width="355" height="296" alt="image" src="https://github.com/user-attachments/assets/a6045741-46b3-42e5-aa9f-4c7db88bc5d7" />
 <img width="310" height="205" alt="image" src="https://github.com/user-attachments/assets/5cedf4e9-bf19-4e27-ba6c-150d583aa1f1" />
 <img width="521" height="1217" alt="image" src="https://github.com/user-attachments/assets/33a0ae39-79d5-4cd7-baf5-31bc74c38edf" />
