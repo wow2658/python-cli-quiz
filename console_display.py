@@ -37,9 +37,29 @@ class ConsoleDisplay:
     # 2. 퀴즈 진행 (플레이) UI
     # ==========================================
     @staticmethod
+    def get_question_count(max_count: int):
+        """풀고 싶은 문제 수를 사용자로부터 입력받습니다."""
+        print(f"\n📂 현재 등록된 퀴즈는 총 {max_count}문제입니다.")
+        while True:
+            ans = input(f"▶️ 풀고 싶은 문제 수를 입력하세요 (1~{max_count}, 전체 풀기는 엔터, 취소는 'q'): ").strip()
+            
+            if ans.lower() == 'q':
+                return None  # 취소 시그널
+            if not ans:
+                return max_count  # 그냥 엔터 치면 전체 다 풀기
+                
+            if ans.isdecimal():
+                count = int(ans)
+                if 1 <= count <= max_count:
+                    return count
+            
+            ConsoleDisplay.show_error(f"1에서 {max_count} 사이의 숫자를 입력하거나 'q'를 눌러 취소해주세요.")
+            
+    @staticmethod
     def show_quiz_question(current_idx: int, total_count: int, question: str, choices: list):
         """퀴즈 1문제의 질문과 선택지를 화면에 출력합니다."""
         print("\n" + "-" * 40)
+        
         print(f"📝 [문제 {current_idx}/{total_count}]")
         print(question + "\n")
         
@@ -75,7 +95,7 @@ class ConsoleDisplay:
             choices.append(choice)
 
         ans_str = input("정답 번호 (1-4): ").strip()
-        if not ans_str.isdigit() or not (1 <= int(ans_str) <= 4):
+        if not ans_str.isdecimal() or not (1 <= int(ans_str) <= 4):
             ConsoleDisplay.show_error("1에서 4 사이의 숫자로 입력해야 합니다.")
             return None
 

@@ -12,8 +12,6 @@ class QuizGame:
     def play(self, question_count: int = None, randomize: bool = False) -> ScoreRecord:
         """
         퀴즈 게임 1회차를 실행합니다.
-        - question_count: 풀고 싶은 문제 수 (기본값: 전체)
-        - randomize: 랜덤 출제 여부 (기본값: False)
         """
         quizzes = self.registry.get_all_quizzes()
         if not quizzes:
@@ -42,14 +40,19 @@ class QuizGame:
             while True:
                 ans_str = ConsoleDisplay.get_quiz_answer()
                 
+                # 🔥 추가된 로직: 포기(Quit) 처리
+                if ans_str == 'q':
+                    ConsoleDisplay.show_message("\n👋 퀴즈를 중도 포기하셨습니다. 메인 메뉴로 돌아갑니다.")
+                    return None  # 여기서 None을 반환하면 main.py에서 기록을 저장하지 않고 루프 탈출
+                
                 # 힌트 처리 로직
                 if ans_str == 'h':
                     hint_msg = hint_calc.get_hint(i, current_quiz.hint)
                     ConsoleDisplay.show_message(f"\n💡 [힌트] {hint_msg}")
                     continue
                     
-                if not ans_str.isdigit():
-                    ConsoleDisplay.show_error("숫자 또는 힌트('h')만 입력해주세요.")
+                if not ans_str.isdecimal():
+                    ConsoleDisplay.show_error("숫자 또는 힌트('h'), 포기('q')만 입력해주세요.")
                     continue
                     
                 ans_int = int(ans_str)
