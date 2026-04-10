@@ -241,6 +241,18 @@ checkout
 ### 7.1. 패러다임: 함수(Function) 대신 클래스(Class)를 도입한 이유
 * **데이터와 기능의 '세트 메뉴화' (상태와 행위의 응집)**: 함수만 사용해서 게임을 만들면, 현재 몇 점인지, 힌트를 몇 번 썼는지 같은 '데이터'를 이 함수 저 함수로 계속 넘겨주거나(매개변수 전달), 어디서든 접근할 수 있는 위험한 공용 변수(전역 변수)를 써야함. 클래스를 도입하면 QuizGame이라는 하나의 상자 안에 데이터(점수, 힌트 횟수)와 기능(채점하기)을 한데 묶어서 자기 자신을 스스로 관리하게 만들 수 있어 코드가 훨씬 깔끔해짐.
   
+<p align="center">
+<img width="860" height="562" alt="image" src="https://github.com/user-attachments/assets/96cd4ab8-3845-4f9a-99b7-4f52b87112c8" />
+</p>
+
+<p align="center">
+<img width="911" height="1198" alt="image" src="https://github.com/user-attachments/assets/34753707-6150-4005-8ef2-aae8354d4fae" />
+</p>
+
+<p align="center">
+  <img width="800" height="171" alt="image" src="https://github.com/user-attachments/assets/ac01bdbe-5086-4c59-8eee-df1975753699" />
+</p>
+  
 * **부서별 역할 나누기 (책임의 분리):** 모든 코드가 한 곳에 섞여 있으면, 단순히 "출력되는 글자" 하나를 바꾸려다 "채점 로직"이 고장 날 수 있음. 화면에 글자를 띄우는 역할(UI), 게임을 진행하는 역할(Engine), 파일에 저장하는 역할(I/O)을 각각의 클래스로 부서 나누듯 격리함. 덕분에 나중에 터미널 화면을 웹 브라우저나 앱으로 바꾸더라도, 핵심 채점 엔진은 한 줄도 고치지 않고 그대로 재사용할 수 있음.
 
 ### 7.2. 데이터베이스: JSON 채택 이유 및 구조 설계
