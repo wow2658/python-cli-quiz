@@ -22,18 +22,25 @@ DEFAULT_DATA = {
 def load_data():
     if not os.path.exists(STATE_FILE):
         print(f"\n[안내] 저장된 데이터({STATE_FILE})가 없습니다. 기본 데이터로 초기화합니다.")
-        return DEFAULT_DATA.copy()
-    
-    try:
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            quiz_count = len(data.get("quizzes", []))
-            best_score = data.get("best_score", 0)
-            print(f"\n📂 저장된 데이터를 불러왔습니다. (퀴즈 {quiz_count}개, 최고점수 {best_score}점)")
-            return data
-    except json.JSONDecodeError:
-        print(f"\n⚠️ 데이터 파일({STATE_FILE})이 손상되었습니다. 기본 퀴즈 데이터로 복구합니다.")
-        return DEFAULT_DATA.copy()
+        data = DEFAULT_DATA.copy()
+    else:
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                quiz_count = len(data.get("quizzes", []))
+                best_score = data.get("best_score", 0)
+                print(f"\n📂 저장된 데이터를 불러왔습니다. (퀴즈 {quiz_count}개, 최고점수 {best_score}점)")
+        except json.JSONDecodeError:
+            print(f"\n⚠️ 데이터 파일({STATE_FILE})이 손상되었습니다. 기본 퀴즈 데이터로 복구합니다.")
+            data = DEFAULT_DATA.copy()
+            
+    # 스키마 무결성 보장 (필수 키가 없으면 기본값 세팅)
+    if "history" not in data:
+        data["history"] = []
+    if "best_score" not in data:
+        data["best_score"] = 0.0
+        
+    return data
 
 def save_data(data):
     # Atomic Save: 저장 중 크래시로 인한 파일 증발 원천 차단
