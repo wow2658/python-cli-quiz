@@ -66,8 +66,10 @@ docker compose run --rm quiz-app
 ```text
 python-cli-quiz/
 ├── 📂 [Entry Point]
-│   └── 📜 main.py             # 객체 의존성 주입(DI) 및 메뉴 라우팅 담당 (진입점)
-├── 📂 [Control Layer] 
+│   └── 📜 main.py             # 객체 의존성 주입(DI) 및 애플리케이션 실행 전담 (진입점)
+├── 📂 [Control Layer]
+│   ├── 📜 terminal_runner.py  # 시스템 생명주기 루프 및 예외(Ctrl+C 등) 방어 전담
+│   ├── 📜 menu_actions.py     # 메뉴별 동작(퀴즈 풀기, 추가, 조회, 종료)을 캡슐화한 커맨드 패턴
 │   ├── 📜 console_display.py  # 화면 출력(print)과 사용자 입력(input) 전담 (UI 격리)
 │   └── 📜 quiz_game.py        # 퀴즈 플레이 엔진 (랜덤 출제, 게임 루프 제어)
 ├── 📂 [Business Logic] 
@@ -78,7 +80,7 @@ python-cli-quiz/
 │   ├── 📜 quiz.py             # 퀴즈 1문제의 형태 (질문, 선택지, 정답, 힌트) DTO
 │   └── 📜 score_history.py    # 1회차 게임 종료 후의 기록물 객체
 ├── 📂 [Infrastructure]
-│   └── 📜 file_io.py          # state.json 파일 I/O 전담
+│   └── 📜 file_io.py          # state.json 파일 I/O 및 데이터 스키마 무결성 보증 전담
 ├── 📜 docker-compose.yml      # 멀티 컨테이너 실행 명세서
 └── 📜 state.json              # 데이터베이스 파일 (볼륨 마운트)
 ```
@@ -89,17 +91,20 @@ python-cli-quiz/
       ↕ (글자를 보여주고 입력을 받음)
 [console_display] 
       ↕
-   [main] 
-      ┣━ (1. 퀴즈 풀기) ━▶ [quiz_game] (진행 엔진)
-      ┃                      ┣━ (화면 렌더링) ━▶ [console_display]
-      ┃                      ┣━ (정답 채점) ━━▶ [quiz_evaluator]
-      ┃                      ┣━ (힌트 감점) ━━▶ [hint_penalty]
-      ┃                      ┗━ (기록 생성) ━━▶ [score_history]
+[terminal_runner] (무한 루프 구동, 예외 방어 및 라우팅)
+      ┣━ (1. 퀴즈 풀기) ━━━━▶ [menu_actions (PlayQuizAction)]
+      ┃                             ┣━ [quiz_game] (진행 엔진 시작)
+      ┃                             ┃      ┣━ (화면 렌더링) ━▶ [console_display]
+      ┃                             ┃      ┣━ (정답 채점) ━━▶ [quiz_evaluator]
+      ┃                             ┃      ┣━ (힌트 감점) ━━▶ [hint_penalty]
+      ┃                             ┃      ┗━ (기록 생성) ━━▶ [score_history]
+      ┃                             ┗━ (종료 및 결과 세이브) ━▶ [file_io]
       ┃
-      ┗━ (종료 후 저장) ━▶ [file_io] ↔ (state.json)
+      ┗━ (5. 정상 종료) ━━━━▶ [menu_actions (ExitAction)]
+                                    ┗━ (데이터 안전 보존) ━━▶ [file_io] ↔ (state.json)
 ```
-게임 종료 후 `state.json` 읽기/쓰기 흐름:
-`[quiz_game] (게임 종료 및 ScoreRecord 객체 반환)` ➔ `[main] (app_data 딕셔너리에 기록 추가 및 최고점수 갱신)` ➔ `[file_io.save_data] (JSON 직렬화 및 임시 파일을 활용한 안전한 덮어쓰기)` ➔ `[state.json]`
+핵심 데이터 영속화 흐름:
+`[MenuAction] (각 기능 수행 완료)` ➔ `[file_io.save_data] (JSON 직렬화 및 임시 파일을 활용한 Atomic 저장)` ➔ `[state.json]`
 
 ### 💡 [참고] 데이터 구조 미리보기 (state.json)
 퀴즈 마스터 데이터(정적)와 플레이어의 기록(동적)을 독립적인 키(Key)로 분리한 계층형 도메인 구조임.
