@@ -304,3 +304,13 @@ CLI 환경에서 사용자의 강제 종료로 인한 데이터 유실을 방지
 * **상황:** 배포용 `main` 브랜치에서 실수로 코드를 대량으로 수정해버렸으나, 해당 내용을 `main`에 직접 올리지 않고 `feature` 등 별도의 격리된 브랜치를 생성하여 커밋하고 싶을 때 발생함.
 * **해결 원리:** Git은 `git commit` 도장을 찍기 전(Working Directory 상태)의 변경 사항들은 현재 브랜치의 DB에 영구 귀속시키지 않고 현재 작업 책상 위에만 임시로 올려둠.
 * **조치 방법:** 수정한 파일들이 널려있는 상태 그대로 `git switch -c <새로운-브랜치-이름>` 명령어를 실행함. Git이 수정된 짐(코드)들을 잃어버리지 않고 그대로 들고 새 브랜치로 이동(Switch)해 줌. 이후 `git add .` 와 `git commit`을 순차적으로 수행하면, 원본 `main` 브랜치는 깨끗하게 보호된 채 새 브랜치에만 작업 내역이 안전하게 박제됨.
+
+### 5. 병합(Merge) 누락된 작업 확인 방법
+프로젝트 진행하다가 실수로 PR(Pull Request) 안 올렸거나, `main` 브랜치에 안 합치고 누락된 작업(Branch) 있는지 확인하는 방법임.
+GitHub 레포지토리의 **[Branches]** 탭에서 한눈에 파악 가능함.
+
+* **Ahead 확인:** 목록 우측의 `Behind | Ahead` 열에서 오른쪽 숫자(Ahead)가 0보다 크다면, `main`에는 없는 새로운 작업(커밋)이 존재한다는 뜻임.
+* **Pull request 열 확인:** 해당 브랜치의 우측 끝 `Pull request` 열이 비어있다면 아직 PR이 생성 안 된 상태임.
+* **💡 요약:** `Ahead` 숫자가 1 이상인데 `Pull request`가 비어있다면? 합쳐지지 않은 작업물이 방치되어 있을 확률이 높으니 확인하고 PR 생성해야 함.
+<img width="1060" height="580" alt="Screenshot 2026-04-14 at 4 25 25 PM" src="https://github.com/user-attachments/assets/d37911cb-48a5-468d-95b5-f3e4c90cf20f" />
+<img width="1119" height="596" alt="Screenshot 2026-04-14 at 4 30 30 PM" src="https://github.com/user-attachments/assets/043a2d2f-0799-41db-948f-d43ec1ecb9f2" />
