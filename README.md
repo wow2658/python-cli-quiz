@@ -190,6 +190,9 @@ python-cli-quiz/
 clone
 
 <img width="477" height="332" alt="Screenshot 2026-04-07 at 2 12 34 PM" src="https://github.com/user-attachments/assets/e520e910-0bb9-4ee5-9fdb-e922bde0a1a0" />
+<img width="616" height="471" alt="image" src="https://github.com/user-attachments/assets/7beb0df6-3aa8-4551-9054-06be30463b32" />
+
+
 
 init
 
