@@ -121,32 +121,51 @@ DEFAULT_DATA = {
 }
 
 def load_data():
+    # 저장된 데이터 파일(state.json)의 물리적 위치 존재 여부 확인
     if not os.path.exists(STATE_FILE):
         print(f"\n[안내] 저장된 데이터({STATE_FILE})가 없습니다. 기본 데이터로 초기화합니다.")
+        # 파일 부재 시 원본 데이터 오염 방지를 위해 얕은 복사(.copy()) 수행 후 변수 할당
         data = DEFAULT_DATA.copy()
     else:
         try:
+            # 파일 존재 시 누수 방지를 위한 컨텍스트 매니저(with) 사용. 읽기(r) 모드 및 utf-8 인코딩 개방
             with open(STATE_FILE, "r", encoding="utf-8") as f:
+                # 파일 객체(f) 텍스트를 파이썬 딕셔너리 형태로 변환(디코딩)하여 변수(data)에 할당
                 data = json.load(f)
+                # 'quizzes' 키값을 안전하게(.get) 추출 및 문제 개수 측정
                 quiz_count = len(data.get("quizzes", []))
+                # 'best_score' 키값 추출 (누락 시 기본값 0 대체)
                 best_score = data.get("best_score", 0)
                 print(f"\n📂 저장된 데이터를 불러왔습니다. (퀴즈 {quiz_count}개, 최고점수 {best_score}점)")
         except json.JSONDecodeError:
+            # 기존 파일 파싱 실패(JSON 문법 오류) 시 예외 처리 방어 로직
             print(f"\n⚠️ 데이터 파일({STATE_FILE})이 손상되었습니다. 기본 퀴즈 데이터로 복구합니다.")
+            # 데이터 복구를 위해 기본 데이터 복사본으로 덮어씀
             data = DEFAULT_DATA.copy()
             
-    # 스키마 무결성 보장 (필수 키가 없으면 기본값 세팅)
+    # 스키마 무결성 보장 (구버전 또는 손상 데이터에 필수 키 누락 시 강제 생성 주입)
     if "history" not in data:
         data["history"] = []
     if "best_score" not in data:
         data["best_score"] = 0.0
         
+    # 파일 유무, 손상, 포맷 검증 통과 완료된 무결성 딕셔너리 객체 반환
     return data
 
 def save_data(data):
-    # Atomic Save: 저장 중 크래시로 인한 파일 증발 원천 차단
+    # Atomic Save: 전원 차단, 강제 종료 등 저장 중 발생 가능한 크래시로 인한 데이터 증발(0바이트) 원천 차단
+    
+    # 1. 대상 디렉토리 절대 경로 산출 후 임시 파일 생성
+    # (fd: 운영체제 파일 식별자 번호, temp_path: 임시 파일 전체 문자열 경로)
     fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(STATE_FILE)))
+    
+    # 2. 생성된 임시 파일을 쓰기(w) 모드로 개방 (이때 원본 state.json은 조작하지 않음)
     with open(temp_path, "w", encoding="utf-8") as f:
+        # JSON 문법 변환 기록. 한글 텍스트 보존(ensure_ascii=False) 및 4칸 들여쓰기(indent=4) 적용
         json.dump(data, f, ensure_ascii=False, indent=4)
+        
+    # 3. 쓰기 완료 후 필수적으로 파일 식별자를 닫아(close) OS 파일 잠금(Lock) 해제
     os.close(fd)
+    
+    # 4. 쓰기가 완료된 임시 파일을 원본 파일명(state.json)으로 즉시 스왑(원자적 교체 연산)
     os.replace(temp_path, STATE_FILE)
