@@ -280,6 +280,79 @@ checkout
 * **Graceful Shutdown (`Ctrl+C`, `EOF`):** 터미널 환경에서 `KeyboardInterrupt` 시 즉각 종료하지 않고 `y/n` 재확인 프롬프트를 띄움. 물리적 단절(`EOFError`) 발생 시에도 즉시 파기하지 않고, `sys.stdin = open('/dev/tty', 'r')`를 호출해 OS 레벨 터미널 재연결을 시도하거나, 불가피할 시 메모리의 데이터를 안전하게 저장(`save_data()`)한 뒤 종료함.
 * **확장성 (요구사항 변경 시 타격 범위):** 만약 "정답 채점 방식"이나 "선택지 개수" 규칙이 변경될 경우, 전체 구조를 수정할 필요 없이 순수 비즈니스 로직을 담당하는 `quiz_evaluator.py` 내부 함수와 `console_display.py`의 출력 포맷 일부만 수정하면 됨. 데이터 구조 로직(`quiz.py`)과 게임 진행 엔진(`quiz_game.py`)은 OCP(개방-폐쇄 원칙)에 따라 수정 없이 그대로 재사용 가능함.
 
+## 8. 리팩토링 사례: `@dataclass` 전면 도입 (보일러플레이트 코드 제거)
+
+### 📌 개요: 무엇을 왜 바꾸었는가?
+기존 코드에서는 모든 클래스마다 `__init__` 생성자 내부에서 `self.변수명 = 변수명`이라는 뻔한 대입 코드를 일일이 수작업으로 작성해야 했음. 변수가 늘어날수록 같은 단어가 한 줄에 3번씩 반복되는 보일러플레이트(Boilerplate) 코드가 급증하여, 파일을 열었을 때 **핵심 비즈니스 로직이 반복 코드에 묻혀 가독성이 저하**되는 문제가 발생함.
+
+파이썬 3.7+ 표준 라이브러리인 `@dataclass` 데코레이터를 전면 도입하여, 이 모든 반복 코드를 **클래스 변수 선언 한 줄**로 대체함.
+
+### ⚙️ 핵심 원리: 코드 자동 생성 데코레이터
+`@dataclass`는 클래스 위에 씌우면 파이썬 엔진이 실행 직전에 클래스 내부를 스캔하여 아래 코드들을 **백그라운드에서 자동으로 생성**해 끼워 넣는 '코드 자동 생성기'임.
+
+| 자동 생성되는 함수 | 역할 |
+|---|---|
+| `__init__` | 생성자. `self.x = x` 대입문을 전부 자동 작성 |
+| `__repr__` | `print(객체)` 시 내용물을 예쁘게 문자열로 출력 |
+| `__eq__` | `객체A == 객체B` 내용 비교 가능 |
+
+### 🔄 Before / After 코드 비교
+
+**대표 사례 1: `quiz.py` (순수 데이터 구조체)**
+```python
+# ⛔ Before: 'question'이라는 단어가 한 줄에 3번 반복. 변수 4개 x 3회 = 12번의 불필요한 타이핑.
+class Quiz:
+    def __init__(self, question: str, choices: list, answer: int, hint: str = None):
+        self.question = question
+        self.choices = choices
+        self.answer = answer
+        self.hint = hint
+```
+```python
+# ✅ After: 이름과 타입만 선언하면 파이썬이 위의 __init__ 전체를 자동 생성!
+from dataclasses import dataclass
+
+@dataclass
+class Quiz:
+    question: str
+    choices: list
+    answer: int
+    hint: str = None
+```
+
+**대표 사례 2: `quiz_registry.py` (후처리 로직이 필요한 특수 케이스)**
+```python
+# ⛔ Before: 단순 대입 + 추가 가공 로직(List Comprehension)이 __init__ 내부에 혼재
+class QuizRegistry:
+    def __init__(self, app_data: dict):
+        self.app_data = app_data
+        self.quizzes = [Quiz.from_dict(q) for q in app_data.get("quizzes", [])]
+```
+```python
+# ✅ After: field(init=False)로 내부 생성 변수를 분리, __post_init__으로 후처리 로직을 격리
+@dataclass
+class QuizRegistry:
+    app_data: dict
+    quizzes: list = field(init=False)  # "밖에서 주입받지 않고 내가 직접 만들 거야!"
+
+    def __post_init__(self):  # 자동 생성된 __init__ 직후 자동 실행됨
+        self.quizzes = [Quiz.from_dict(q) for q in self.app_data.get("quizzes", [])]
+```
+
+### 📊 적용 결과 요약
+
+| 적용 파일 | Before (`__init__` 줄) | After (선언 줄) | 절감률 |
+|---|---|---|---|
+| `quiz.py` | 5줄 | 4줄 | −20% |
+| `quiz_game.py` | 3줄 | 1줄 | −67% |
+| `terminal_runner.py` | 4줄 | 2줄 | −50% |
+| `quiz_registry.py` | 4줄 | 4줄 (`__post_init__`) | ±0% (구조 개선) |
+| `menu_actions.py` (5개 클래스) | ~20줄 | ~8줄 | −60% |
+| `score_history.py` | 5줄 | 4줄 (`__post_init__`) | −20% |
+| `hint_penalty.py` | 3줄 | 3줄 (`__post_init__`) | ±0% (구조 개선) |
+
+**총 보일러플레이트 약 44줄 → 26줄로 절감 (약 40% 감소)**, 동시에 `__repr__`·`__eq__` 등 디버깅/비교 기능을 무상으로 획득함.
+
 ---
 
 ## [부록] 핵심 예외 처리 및 트러블슈팅 (Troubleshooting)
